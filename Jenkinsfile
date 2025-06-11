@@ -41,19 +41,13 @@ pipeline {
                 echo "🔒 Connecting to remote EC2 to deploy..."
                 sshagent([SSH_KEY_ID]) {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} <<'EOF'
-                    echo "🧹 Removing old container if it exists..."
-                    docker rm -f ${CONTAINER_NAME} || true
-
-                    echo "📥 Pulling latest Docker image..."
-                    docker pull ${IMAGE_NAME}:${IMAGE_TAG}
-
-                    echo "🚀 Running new container..."
-                    docker run -d --name ${CONTAINER_NAME} -p 3000:3000 ${IMAGE_NAME}:${IMAGE_TAG}
-
-                    echo "✅ Deployment successful!"
-                    EOF
-                    """
+    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} <<'EOF'
+    docker rm -f ${CONTAINER_NAME} || true
+    docker pull ${IMAGE_NAME}:${IMAGE_TAG}
+    docker run -d --name ${CONTAINER_NAME} -p 3000:3000 ${IMAGE_NAME}:${IMAGE_TAG}
+    echo "✅ Deployment successful!"
+    EOF
+    """
                 }
             }
         }
