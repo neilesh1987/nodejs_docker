@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Clone Git Repository') {
             steps {
-                git scm
+                checkout scm
             }
         }
 
