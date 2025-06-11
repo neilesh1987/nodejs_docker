@@ -2,59 +2,69 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'prashik536/nodejs'
-        DOCKER_CREDENTIALS_ID = 'docker'     // Docker Hub credentials ID
-        SSH_CREDENTIALS_ID = 'deploy-key'    // SSH key credentials ID
-        DEPLOY_USER = 'prashik'               // Username on remote server
-        DEPLOY_HOST = '172.31.94.51'       // Replace with your server IP
-        CONTAINER_NAME = 'nodejs-app'
-        APP_PORT = '3000'
-        HOST_PORT = '80'
+        IMAGE_NAME = "prashik536/nodejs"
+        IMAGE_TAG = "latest"
+        CONTAINER_NAME = "nodejs-app"
+        REMOTE_USER = "prashik"
+        REMOTE_HOST = "172.31.94.51"
+        SSH_KEY_ID = "deploy-key"    // Jenkins Credentials ID for SSH key
     }
 
     stages {
-        stage('Clone Git Repository') {
+        stage('Checkout') {
             steps {
+                echo "🔁 Cloning source code..."
                 checkout scm
-            }
-        }
-
-        stage('Check Docker Version') {
-            steps {
-                sh 'docker --version'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE:latest .'
+                echo "📦 Building Docker image..."
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push $DOCKER_IMAGE:latest
-                    '''
+                withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    echo "📤 Logging in to Docker Hub..."
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                    echo "🚀 Pushing image to Docker Hub..."
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
 
-        stage('Deploy to Remote Server') {
+        stage('Deploy to EC2') {
             steps {
-                sshagent (credentials: ["${SSH_CREDENTIALS_ID}"]) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST << EOF
-                        docker pull $DOCKER_IMAGE:latest
-                        docker stop $CONTAINER_NAME || true
-                        docker rm $CONTAINER_NAME || true
-                        docker run -d --name $CONTAINER_NAME -p $HOST_PORT:$APP_PORT $DOCKER_IMAGE:latest
-                        EOF
-                    '''
+                echo "🔒 Connecting to remote EC2 to deploy..."
+                sshagent([SSH_KEY_ID]) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} <<'EOF'
+                    echo "🧹 Removing old container if it exists..."
+                    docker rm -f ${CONTAINER_NAME} || true
+
+                    echo "📥 Pulling latest Docker image..."
+                    docker pull ${IMAGE_NAME}:${IMAGE_TAG}
+
+                    echo "🚀 Running new container..."
+                    docker run -d --name ${CONTAINER_NAME} -p 3000:3000 ${IMAGE_NAME}:${IMAGE_TAG}
+
+                    echo "✅ Deployment successful!"
+                    EOF
+                    """
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ CI/CD pipeline completed successfully."
+        }
+        failure {
+            echo "❌ Pipeline failed!"
         }
     }
 }
