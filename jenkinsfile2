@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         APP_NAME = "my-node-app"        // Change this to your app name
-        ENTRY_FILE = "index.js"         // Change if your entry point is different
+        ENTRY_FILE = "app.js"         // Change if your entry point is different
     }
 
     stages {
