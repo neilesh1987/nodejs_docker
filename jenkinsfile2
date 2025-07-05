@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = "my-node-app"        // Change this to your app name
+        ENTRY_FILE = "index.js"         // Change if your entry point is different
+    }
+
+    stages {
+        stage('Check Node Version') {
+            steps {
+                sh 'node --version'
+            }
+        }
+
+        stage('Check NPM Version') {
+            steps {
+                sh 'npm --version'
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Start with PM2') {
+            steps {
+                echo 'Stopping any previous instance...'
+                sh '''
+                    pm2 stop "$APP_NAME" || true
+                    pm2 delete "$APP_NAME" || true
+                '''
+                echo 'Starting application with PM2...'
+                sh '''
+                    pm2 start $ENTRY_FILE --name "$APP_NAME"
+                    pm2 save
+                    pm2 status
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Node.js App Deployed with PM2 Successfully!'
+        }
+        failure {
+            echo '❌ PM2 Deployment Failed.'
+        }
+    }
+}
