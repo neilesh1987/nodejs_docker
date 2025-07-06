@@ -6,8 +6,8 @@ pipeline {
         IMAGE_TAG = "latest"
         CONTAINER_NAME = "nodejs-app"
         REMOTE_USER = "ubuntu"
-        REMOTE_HOST = "172.31.17.231"
-        SSH_KEY_ID = "deploy-key"    // Jenkins Credentials ID for SSH key
+        REMOTE_HOST = "172.31.94.30"
+        SSH_KEY_ID = "ssh-key"    // Jenkins Credentials ID for SSH key
     }
 
     stages {
